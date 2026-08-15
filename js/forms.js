@@ -92,6 +92,28 @@ function makeInput(spec, obj, onChange, id) {
       return sel;
     }
 
+    case 'color': {
+      // Native picker plus the hex, because a print designer knows the hex and
+      // typing it is faster than hunting for it in an OS colour wheel.
+      const box = el('div', 'color-field');
+      const swatch = el('input', 'color-swatch');
+      swatch.type = 'color';
+      swatch.value = normHex(value);
+      swatch.setAttribute('aria-label', `${spec.label} colour picker`);
+      const hex = el('input', 'form-input color-hex');
+      hex.type = 'text';
+      hex.value = value ?? '';
+      hex.spellcheck = false;
+      hex.setAttribute('aria-label', `${spec.label} hex value`);
+      swatch.addEventListener('input', () => { hex.value = swatch.value; onChange(spec.key, swatch.value); });
+      hex.addEventListener('input', () => {
+        const v = hex.value.trim();
+        if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) { swatch.value = normHex(v); onChange(spec.key, v); }
+      });
+      box.append(swatch, hex);
+      return box;
+    }
+
     case 'checkbox': {
       const inp = el('input', 'form-check');
       inp.type = 'checkbox';
@@ -135,6 +157,14 @@ function makeInput(spec, obj, onChange, id) {
       return inp;
     }
   }
+}
+
+/** <input type="color"> only accepts #rrggbb, so widen shorthand before assigning. */
+function normHex(v) {
+  const s = String(v || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(s)) return s;
+  if (/^#[0-9a-f]{3}$/i.test(s)) return `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}`;
+  return '#000000';
 }
 
 function clampNum(n, spec) {

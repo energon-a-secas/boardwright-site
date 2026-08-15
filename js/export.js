@@ -49,7 +49,15 @@ export function buildBrief(d, findings = runChecks(d)) {
   L.push('| File | What it is |', '| --- | --- |');
   L.push('| `game.json` | The model. Zones are containers, actions are the legal moves. |');
   L.push(`| \`board.png\` | Board reference, ${d.board.width}x${d.board.height} units. Every rectangle is labelled with its zone id. |`);
-  d.templates.forEach((t) => L.push(`| \`cards/${slug(t.name, t.id)}.png\` | Face reference for the "${t.name}" template. Dashed boxes are slots, labelled with their key. |`));
+  d.templates.forEach((t) => {
+    const base = slug(t.name, t.id);
+    L.push(`| \`cards/${base}-design.png\` | Design sheet for "${t.name}". Dashed boxes are slots, labelled with their key. |`);
+    if (t.variants.length) {
+      L.push(`| \`cards/${base}-*.png\` | Print faces, one per deck colour: ${t.variants.map((v) => slug(v.name, v.id)).join(', ')}. No annotations. |`);
+    } else {
+      L.push(`| \`cards/${base}-face.png\` | Print face for "${t.name}". No annotations. |`);
+    }
+  });
   L.push('| `BRIEF.md` | This file. |', '');
 
   L.push('## Suggested state shape', '');
@@ -100,17 +108,31 @@ export function buildBrief(d, findings = runChecks(d)) {
     d.templates.forEach((t) => {
       L.push(`### ${t.name} \`${t.id}\``, '');
       L.push(`${t.w}x${t.h}mm, ${t.count} copies, ${t.corner}mm corner radius. Slot rectangles are percentages of the face.`, '');
+      L.push(`Face \`${t.bg}\`, ink \`${t.ink}\`, accent \`${t.accent}\`. Frame: ${t.frame}.${t.border ? ' Keyline border on.' : ''}`, '');
       if (t.notes.trim()) L.push(inline(t.notes), '');
+
+      if (t.variants.length) {
+        L.push(`This template prints as ${t.variants.length} decks that share every slot and differ only in paint:`, '');
+        L.push('| deck | key | face | ink | mark |', '| --- | --- | --- | --- | --- |');
+        t.variants.forEach((v) => L.push(row([v.name, `\`${slug(v.name, v.id)}\``, `\`${v.bg}\``, `\`${v.ink}\``, v.icon ? `glyph \`${v.icon}\`` : 'slot default'])));
+        L.push('');
+      }
+
       if (!t.fields.length) {
         L.push('_No slots defined._', '');
         return;
       }
-      L.push('| slot | key | type | x% | y% | w% | h% | align | sample |');
-      L.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-      t.fields.forEach((f) => L.push(row([
-        f.label, `\`${slug(f.label, f.id)}\``, fieldType(f.type).label,
-        f.x, f.y, f.w, f.h, f.align, f.sample || '(none)',
-      ])));
+      L.push('| slot | key | type | x% | y% | w% | h% | align | plate | value |');
+      L.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+      t.fields.forEach((f) => {
+        const glyph = f.type === 'icon' || f.type === 'pip';
+        const plate = f.shape === 'none' ? '(none)' : `${f.shape}/${f.fill}${f.invert ? ' inverted' : ''}`;
+        L.push(row([
+          f.label, `\`${slug(f.label, f.id)}\``, fieldType(f.type).label,
+          f.x, f.y, f.w, f.h, f.align, plate,
+          glyph ? `glyph \`${f.icon}\`` : (f.sample || '(none)'),
+        ]));
+      });
       L.push('');
     });
   }
@@ -233,8 +255,19 @@ export async function buildBundle(d) {
   ];
 
   for (const t of d.templates) {
-    const png = await toBlob(drawCard(t, 10));
-    files.push({ name: `cards/${slug(t.name, t.id)}.png`, data: new Uint8Array(await png.arrayBuffer()) });
+    const base = slug(t.name, t.id);
+    // Two kinds of render per deck: the design sheet carries slot keys so the
+    // implementer can match rectangles to JSON, the print face carries none.
+    const sheet = await toBlob(drawCard(t, 10, null, true));
+    files.push({ name: `cards/${base}-design.png`, data: new Uint8Array(await sheet.arrayBuffer()) });
+
+    const paints = t.variants.length
+      ? t.variants.map((v) => ({ suffix: slug(v.name, v.id), variant: v }))
+      : [{ suffix: 'face', variant: null }];
+    for (const p of paints) {
+      const png = await toBlob(drawCard(t, 10, p.variant, false));
+      files.push({ name: `cards/${base}-${p.suffix}.png`, data: new Uint8Array(await png.arrayBuffer()) });
+    }
   }
 
   return {

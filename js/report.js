@@ -8,6 +8,7 @@ import { el, panel } from './forms.js';
 import { buildBrief, buildJson, buildPrompt, buildBundle, download, textBlob } from './export.js';
 import { slug } from './model.js';
 import { SAMPLE } from './sample.js';
+import { SAMPLE_ANTE } from './sample-ante.js';
 import { $, showToast, confirmAction } from './utils.js';
 
 /* ── Check ────────────────────────────────────────────────── */
@@ -76,7 +77,17 @@ export function renderExport() {
   manifest.append(
     manifestRow('game.json', 'The model. Zones, components, phases, actions, end conditions.'),
     manifestRow('board.png', `Board reference at ${d.board.width}x${d.board.height}, every zone labelled with its id.`),
-    ...d.templates.map((t) => manifestRow(`cards/${slug(t.name, t.id)}.png`, `Face reference for ${t.name}, slots labelled with their key.`)),
+    ...d.templates.flatMap((t) => {
+      const base = slug(t.name, t.id);
+      const rows = [manifestRow(`cards/${base}-design.png`, `Design sheet for ${t.name}, slots labelled with their key.`)];
+      if (t.variants.length) {
+        rows.push(manifestRow(`cards/${base}-*.png`,
+          `Print faces, one per deck colour: ${t.variants.map((v) => v.name).join(', ')}.`));
+      } else {
+        rows.push(manifestRow(`cards/${base}-face.png`, `Print face for ${t.name}, no annotations.`));
+      }
+      return rows;
+    }),
     manifestRow('BRIEF.md', findings.length
       ? `The same model in prose, ending with ${findings.length} open ${findings.length === 1 ? 'question' : 'questions'}.`
       : 'The same model in prose. Nothing was left open.'),
@@ -122,12 +133,21 @@ export function renderExport() {
   preview.body.appendChild(pre);
   pane.appendChild(preview);
 
-  const manage = panel('This design', { hint: 'Everything lives in this browser. Export the JSON to move it or keep a version.' });
+  const manage = panel('This design', {
+    hint: 'Everything lives in this browser. Export the JSON to move it or keep a version. '
+      + 'Two examples ship with the tool: Elemental Ante is a coloured card game, Harvest Run a plainer board game.',
+  });
   const row = el('div', 'toolbar toolbar--gap');
   row.append(
     action('Import JSON', () => $('importFile').click()),
-    action('Load the worked example', () => {
-      confirmAction('Load the worked example?', 'Harvest Run replaces what is on screen. Undo brings it back.', () => {
+    action('Load Elemental Ante', () => {
+      confirmAction('Load Elemental Ante?', 'The card-game example replaces what is on screen. Undo brings it back.', () => {
+        replaceDesign(structuredClone(SAMPLE_ANTE));
+        showToast('Elemental Ante loaded');
+      });
+    }),
+    action('Load Harvest Run', () => {
+      confirmAction('Load Harvest Run?', 'The board-game example replaces what is on screen. Undo brings it back.', () => {
         replaceDesign(structuredClone(SAMPLE));
         showToast('Harvest Run loaded');
       });

@@ -13,6 +13,7 @@ export const state = {
   selectedZone: null,
   selectedTemplate: null,
   selectedField: null,
+  selectedVariant: null,
   snap: true,
   findings: [],
   history: [],
@@ -101,6 +102,7 @@ export function replaceDesign(raw) {
   state.design = migrate(raw);
   state.selectedZone = null;
   state.selectedField = null;
+  state.selectedVariant = null;
   state.selectedTemplate = state.design.templates[0]?.id || null;
   save();
   emit();

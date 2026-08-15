@@ -48,12 +48,41 @@ export const VISIBILITY = [
   { id: 'hidden', label: 'Hidden from all' },
 ];
 
+/**
+ * Card face furniture. A card game's look is mostly these three decisions,
+ * so they live on the template rather than being drawn as slots: every card
+ * in a deck shares them, and repeating them per slot is how a deck drifts.
+ */
+export const CARD_FRAMES = [
+  { id: 'none',   label: 'Plain' },
+  { id: 'oval',   label: 'Oval' },
+  { id: 'wedges', label: 'Corner wedges' },
+  { id: 'both',   label: 'Oval + wedges' },
+];
+
+/** A slot can carry its own plate, which is what makes a corner badge read. */
+export const SLOT_SHAPES = [
+  { id: 'none',   label: 'None' },
+  { id: 'box',    label: 'Box' },
+  { id: 'pill',   label: 'Pill' },
+  { id: 'circle', label: 'Circle' },
+  { id: 'wedge',  label: 'Corner wedge' },
+];
+
+export const SLOT_FILLS = [
+  { id: 'none',   label: 'Transparent' },
+  { id: 'ink',    label: 'Ink' },
+  { id: 'face',   label: 'Face colour' },
+  { id: 'accent', label: 'Accent' },
+];
+
 export const FIELD_TYPES = [
   { id: 'text',      label: 'Text',      sample: 'Card name' },
   { id: 'paragraph', label: 'Paragraph', sample: 'Rules text goes here, two or three lines of it.' },
   { id: 'number',    label: 'Number',    sample: '3' },
   { id: 'art',       label: 'Art',       sample: '' },
   { id: 'icon',      label: 'Icon',      sample: '' },
+  { id: 'pip',       label: 'Pip',       sample: '' },
   { id: 'badge',     label: 'Badge',     sample: 'Type' },
 ];
 
@@ -124,8 +153,27 @@ export function newField(partial = {}) {
     align: 'left',
     size: 'md',
     sample: fieldType(type).sample,
+    // A slot draws nothing of its own by default; a corner badge is this
+    // same slot with a wedge plate and inverted ink.
+    shape: 'none',
+    fill: 'none',
+    invert: false,
+    icon: type === 'icon' || type === 'pip' ? 'fire' : '',
     ...partial,
   };
+}
+
+export function newVariant(partial = {}) {
+  return { id: uid('var'), name: 'Variant', bg: '#e4483c', ink: '#ffffff', icon: '', ...partial };
+}
+
+/**
+ * The glyph a slot shows for a given deck. `pip` means "this deck's mark", so
+ * the variant answers; `icon` means "this card's picture", so the slot does.
+ */
+export function slotIcon(field, variant) {
+  if (field.type === 'pip' && variant && variant.icon) return variant.icon;
+  return field.icon;
 }
 
 export function newTemplate(partial = {}) {
@@ -136,6 +184,15 @@ export function newTemplate(partial = {}) {
     corner: 3,
     count: 40,
     notes: '',
+    bg: '#fbf8f2',
+    ink: '#15161c',
+    accent: '#7c3aed',
+    frame: 'none',
+    border: true,
+    // One template, many coloured decks. The elements of a game are almost
+    // always the same card in different paint, and duplicating the template
+    // per colour is how their slots stop matching.
+    variants: [],
     fields: [
       newField({ type: 'text', label: 'Name', x: 8, y: 6, w: 68, h: 9, sample: 'Card name' }),
       newField({ type: 'number', label: 'Cost', x: 78, y: 5, w: 14, h: 11, align: 'center', sample: '3' }),
@@ -194,8 +251,9 @@ export function migrate(raw) {
   d.board.height = Number(board.height) || BOARD_DEFAULT.height;
   d.board.zones = (board.zones || []).map((z) => newZone({ ...z, id: z.id || uid('zone') }));
   d.templates = (raw.templates || []).map((t) => ({
-    ...newTemplate({ ...t, id: t.id || uid('tpl'), fields: [] }),
+    ...newTemplate({ ...t, id: t.id || uid('tpl'), fields: [], variants: [] }),
     fields: (t.fields || []).map((f) => newField({ ...f, id: f.id || uid('fld') })),
+    variants: (t.variants || []).map((v) => newVariant({ ...v, id: v.id || uid('var') })),
   }));
   d.components = (raw.components || []).map((c) => newComponent({ ...c, id: c.id || uid('cmp') }));
   d.phases = (raw.phases || []).map((p) => newPhase({ ...p, id: p.id || uid('ph') }));

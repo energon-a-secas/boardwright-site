@@ -3,7 +3,11 @@
 // percentages of the face so the exported spec survives any print size
 // or screen resolution the implementer picks.
 
-import { FIELD_TYPES, CARD_PRESETS, newTemplate, newField, fieldType, uid } from './model.js';
+import {
+  FIELD_TYPES, CARD_PRESETS, CARD_FRAMES, SLOT_SHAPES, SLOT_FILLS,
+  newTemplate, newField, newVariant, fieldType, slotIcon, uid,
+} from './model.js';
+import { ICONS, ICON_GROUPS, iconSvg } from './icons.js';
 import { state, commit, activeTemplate, activeField, historyGate, emit } from './state.js';
 import { buildForm, el } from './forms.js';
 import { attachRect, addHandles } from './drag.js';
@@ -20,10 +24,13 @@ export function renderCards() {
   const tpl = activeTemplate();
   if (state.selectedTemplate !== tpl?.id) state.selectedTemplate = tpl?.id || null;
 
+  if (tpl && !tpl.variants.some((v) => v.id === state.selectedVariant)) state.selectedVariant = null;
+
   renderTemplateList();
   renderFieldPalette();
   renderSizeBar(tpl);
   renderFace(tpl);
+  renderVariantStrip(tpl);
   renderInspector(tpl);
 }
 
@@ -62,6 +69,7 @@ function renderFieldPalette() {
   const disabled = !activeTemplate();
   FIELD_TYPES.forEach((t) => {
     const btn = el('button', 'kind-btn kind-btn--plain');
+    btn.dataset.type = t.id;
     btn.type = 'button';
     btn.disabled = disabled;
     btn.append(el('span', 'kind-label', t.label));
@@ -113,6 +121,13 @@ function renderSizeBar(tpl) {
   bar.appendChild(wrap);
 }
 
+/** The colours the face is currently painted in: base, or the picked variant. */
+export function paint(tpl) {
+  const v = tpl.variants.find((x) => x.id === state.selectedVariant);
+  return v ? { bg: v.bg, ink: v.ink, accent: tpl.accent, name: v.name, variant: v }
+           : { bg: tpl.bg, ink: tpl.ink, accent: tpl.accent, name: 'Base', variant: null };
+}
+
 function renderFace(tpl) {
   const stage = stageEl();
   if (!stage) return;
@@ -125,24 +140,54 @@ function renderFace(tpl) {
     return;
   }
 
+  const c = paint(tpl);
   stage.classList.remove('is-empty');
   stage.style.width = `${tpl.w * MM}px`;
   stage.style.height = `${tpl.h * MM}px`;
   stage.style.borderRadius = `${tpl.corner * MM}px`;
+  stage.style.background = c.bg;
+  stage.style.color = c.ink;
+  stage.style.setProperty('--ink', c.ink);
+  stage.style.setProperty('--face', c.bg);
+  stage.style.setProperty('--card-accent', c.accent);
+  stage.style.boxShadow = tpl.border ? `inset 0 0 0 ${Math.max(tpl.w * MM * 0.018, 2)}px ${c.ink}` : 'none';
+
+  if (tpl.frame === 'oval' || tpl.frame === 'both') {
+    const oval = el('div', 'face-oval');
+    oval.style.borderWidth = `${Math.max(tpl.w * MM * 0.045, 3)}px`;
+    stage.appendChild(oval);
+  }
+  if (tpl.frame === 'wedges' || tpl.frame === 'both') {
+    ['tl', 'tr', 'bl', 'br'].forEach((corner) => {
+      const w = el('div', `face-wedge face-wedge--${corner}`);
+      stage.appendChild(w);
+    });
+  }
 
   tpl.fields.forEach((f) => stage.appendChild(fieldNode(tpl, f)));
 }
 
+/** Which corner a wedge-shaped slot curves away from, taken from where it sits. */
+export function wedgeCorner(f) {
+  const cx = f.x + f.w / 2;
+  const cy = f.y + f.h / 2;
+  return `${cy < 50 ? 't' : 'b'}${cx < 50 ? 'l' : 'r'}`;
+}
+
 function fieldNode(tpl, f) {
-  const node = el('div', `slot slot--${f.type} slot--${f.size}`);
+  const node = el('div', `slot slot--${f.type} slot--${f.size} shape-${f.shape} fill-${f.fill}`);
   node.dataset.id = f.id;
   node.dataset.align = f.align;
   node.dataset.label = f.label;
   node.title = `${f.label} (${fieldType(f.type).label})`;
+  if (f.shape === 'wedge') node.dataset.corner = wedgeCorner(f);
+  if (f.invert) node.classList.add('is-invert');
   if (f.id === state.selectedField) node.classList.add('is-selected');
   place(node, f);
 
-  if (f.type === 'art' || f.type === 'icon') {
+  if (f.type === 'icon' || f.type === 'pip') {
+    node.insertAdjacentHTML('beforeend', iconSvg(slotIcon(f, paint(tpl).variant), 'slot-icon'));
+  } else if (f.type === 'art') {
     node.appendChild(el('span', 'slot-ph', f.label));
   } else {
     node.appendChild(el('span', 'slot-text', f.sample || f.label));
@@ -199,8 +244,26 @@ function renderInspector(tpl) {
   }
 
   box.appendChild(el('h2', 'inspector-title', 'Template'));
+  const tplChange = (key, value) => {
+    commit((d) => {
+      const live = d.templates.find((t) => t.id === tpl.id);
+      if (live) live[key] = value;
+    }, { history: historyGate(`tpl:${tpl.id}:${key}`), silent: true });
+    if (key === 'name') renderTemplateList();
+    renderFace(activeTemplate());
+  };
   box.appendChild(buildForm([
     { key: 'name', label: 'Name', type: 'text', maxlength: 40 },
+    {
+      type: 'group', label: 'Face',
+      fields: [
+        { key: 'bg', label: 'Colour', type: 'color' },
+        { key: 'ink', label: 'Ink', type: 'color' },
+        { key: 'accent', label: 'Accent', type: 'color' },
+      ],
+    },
+    { key: 'frame', label: 'Frame', type: 'select', options: CARD_FRAMES },
+    { key: 'border', label: 'Keyline border', type: 'checkbox' },
     {
       type: 'group', label: 'Print run',
       fields: [
@@ -209,14 +272,9 @@ function renderInspector(tpl) {
       ],
     },
     { key: 'notes', label: 'Notes', type: 'textarea', rows: 2, placeholder: 'How this deck behaves' },
-  ], tpl, (key, value) => {
-    commit((d) => {
-      const live = d.templates.find((t) => t.id === tpl.id);
-      if (live) live[key] = value;
-    }, { history: historyGate(`tpl:${tpl.id}:${key}`), silent: true });
-    if (key === 'name') renderTemplateList();
-    if (key === 'corner') renderFace(activeTemplate());
-  }));
+  ], tpl, tplChange));
+
+  box.appendChild(variantEditor(tpl));
 
   const tplActions = el('div', 'inspector-actions');
   tplActions.append(
@@ -232,10 +290,21 @@ function renderInspector(tpl) {
     return;
   }
 
+  const isGlyph = f.type === 'icon' || f.type === 'pip';
   box.appendChild(buildForm([
     { key: 'label', label: 'Label', type: 'text', maxlength: 30, hint: 'The engine uses this as the data key' },
     { key: 'type', label: 'Type', type: 'select', options: FIELD_TYPES },
-    { key: 'sample', label: 'Sample value', type: 'text', placeholder: fieldType(f.type).sample || 'shown in the preview' },
+    ...(isGlyph
+      ? [{ key: 'icon', label: 'Glyph', type: 'select', options: iconOptions }]
+      : [{ key: 'sample', label: 'Sample value', type: 'text', placeholder: fieldType(f.type).sample || 'shown in the preview' }]),
+    {
+      type: 'group', label: 'Plate',
+      fields: [
+        { key: 'shape', label: 'Shape', type: 'select', options: SLOT_SHAPES },
+        { key: 'fill', label: 'Fill', type: 'select', options: SLOT_FILLS },
+      ],
+    },
+    { key: 'invert', label: 'Ink on the plate, not the face', type: 'checkbox' },
     {
       type: 'group', label: 'Placement (% of face)',
       fields: [
@@ -249,7 +318,7 @@ function renderInspector(tpl) {
       type: 'group', label: 'Style',
       fields: [
         { key: 'align', label: 'Align', type: 'select', options: [{ id: 'left', label: 'Left' }, { id: 'center', label: 'Center' }, { id: 'right', label: 'Right' }] },
-        { key: 'size', label: 'Size', type: 'select', options: [{ id: 'sm', label: 'Small' }, { id: 'md', label: 'Medium' }, { id: 'lg', label: 'Large' }] },
+        { key: 'size', label: 'Size', type: 'select', options: [{ id: 'sm', label: 'Small' }, { id: 'md', label: 'Medium' }, { id: 'lg', label: 'Large' }, { id: 'xl', label: 'Huge' }] },
       ],
     },
   ], f, (key, value) => {
@@ -269,6 +338,105 @@ function renderInspector(tpl) {
     btn('Delete', () => removeField(tpl.id, f.id), 'btn--danger'),
   );
   box.appendChild(fieldActions);
+}
+
+const iconOptions = () =>
+  ICON_GROUPS.flatMap((g) => ICONS.filter((i) => i.group === g)
+    .map((i) => ({ id: i.id, label: `${g}: ${i.label}` })));
+
+/** Colour variants: one template, a deck per colour. */
+function variantEditor(tpl) {
+  const wrap = el('div', 'variant-block');
+  const head = el('div', 'variant-head');
+  head.append(el('h2', 'inspector-title', 'Deck colours'));
+  const add = el('button', 'btn btn--secondary btn--sm', 'Add');
+  add.type = 'button';
+  add.addEventListener('click', () => {
+    commit((d) => {
+      const live = d.templates.find((t) => t.id === tpl.id);
+      if (live) live.variants.push(newVariant({ name: `Colour ${live.variants.length + 1}` }));
+    });
+    emit();
+  });
+  head.appendChild(add);
+  wrap.appendChild(head);
+
+  if (!tpl.variants.length) {
+    wrap.appendChild(el('p', 'inspector-empty',
+      'None yet. Add one per coloured deck and the slots stay shared, so a change to the layout reaches every colour at once.'));
+    return wrap;
+  }
+
+  tpl.variants.forEach((v) => {
+    const row = el('div', 'variant-row');
+    const change = (key, value) => {
+      commit((d) => {
+        const live = d.templates.find((t) => t.id === tpl.id)?.variants.find((x) => x.id === v.id);
+        if (live) live[key] = value;
+      }, { history: historyGate(`var:${v.id}:${key}`), silent: true });
+      renderFace(activeTemplate());
+      renderVariantStrip(activeTemplate());
+    };
+    row.appendChild(buildForm([
+      { key: 'name', label: 'Name', type: 'text', maxlength: 24 },
+      {
+        type: 'group', label: '',
+        fields: [
+          { key: 'bg', label: 'Colour', type: 'color' },
+          { key: 'ink', label: 'Ink', type: 'color' },
+        ],
+      },
+      { key: 'icon', label: 'Deck mark', type: 'select', options: iconOptions, blank: 'Use the slot glyph',
+        hint: 'Fills every Pip slot on this deck' },
+    ], v, change));
+    const del = el('button', 'btn btn--ghost btn--sm', 'Remove');
+    del.type = 'button';
+    del.addEventListener('click', () => {
+      commit((d) => {
+        const live = d.templates.find((t) => t.id === tpl.id);
+        if (live) live.variants = live.variants.filter((x) => x.id !== v.id);
+      });
+      if (state.selectedVariant === v.id) state.selectedVariant = null;
+      emit();
+    });
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+/** Swatches under the face, so a colour can be previewed without a form. */
+function renderVariantStrip(tpl) {
+  const bar = $('variantStrip');
+  if (!bar) return;
+  bar.textContent = '';
+  if (!tpl || !tpl.variants.length) { bar.hidden = true; return; }
+  bar.hidden = false;
+
+  const swatch = (id, name, bg, ink) => {
+    const b = el('button', 'swatch');
+    b.type = 'button';
+    b.title = name;
+    b.setAttribute('aria-label', `Preview ${name}`);
+    b.setAttribute('aria-pressed', String(state.selectedVariant === id));
+    if (state.selectedVariant === id) b.classList.add('is-on');
+    // `color` on the button feeds the dot through currentColor; the deck's
+    // ink shows as the dot's inner ring so both halves of the pair are visible.
+    b.style.color = bg;
+    const dot = el('span', 'swatch-dot');
+    dot.style.boxShadow = `inset 0 0 0 3px ${ink}`;
+    b.appendChild(dot);
+    b.appendChild(el('span', 'swatch-name', name));
+    b.addEventListener('click', () => {
+      state.selectedVariant = id;
+      renderFace(activeTemplate());
+      renderVariantStrip(activeTemplate());
+    });
+    return b;
+  };
+
+  bar.appendChild(swatch(null, 'Base', tpl.bg, tpl.ink));
+  tpl.variants.forEach((v) => bar.appendChild(swatch(v.id, v.name, v.bg, v.ink)));
 }
 
 function btn(label, onClick, variant = 'btn--secondary') {

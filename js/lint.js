@@ -5,6 +5,7 @@
 // building the game knows what was left open instead of inventing it.
 
 import { zoneKind } from './model.js';
+import { iconById } from './icons.js';
 
 const BLOCKER = 'blocker';
 const CHECK = 'check';
@@ -170,7 +171,24 @@ export function runChecks(d) {
         'A card format with no fields carries no data, so the engine has nothing to render or read.',
         `What is printed on a "${t.name}" card?`);
     }
+    // A deck printed in a colour its own ink cannot be read on is a real
+    // production defect: it survives the screen and dies at the printer.
+    const paints = [{ name: 'Base', bg: t.bg, ink: t.ink }, ...t.variants];
+    paints.forEach((p) => {
+      const ratio = contrast(p.bg, p.ink);
+      if (ratio !== null && ratio < 3) {
+        add(CHECK, 'Cards', `"${t.name}" is hard to read in ${p.name}`,
+          `Ink ${p.ink} on ${p.bg} is about ${ratio.toFixed(1)}:1. Under 3:1 the numbers stop reading across a table, and printing loses more contrast than a screen shows.`,
+          `Should ${p.name} use a darker ink or a lighter face?`);
+      }
+    });
+
     t.fields.forEach((f) => {
+      if ((f.type === 'icon' || f.type === 'pip') && !iconById(f.icon)) {
+        add(BLOCKER, 'Cards', `"${f.label}" points at a glyph that does not exist`,
+          `The slot asks for \`${f.icon || '(empty)'}\`, which is not in the icon set, so it renders as an empty box.`,
+          `Which glyph should "${f.label}" use?`);
+      }
       if (f.x + f.w > 100.5 || f.y + f.h > 100.5) {
         add(CHECK, 'Cards', `"${f.label}" runs off the "${t.name}" face`,
           `It sits at ${f.x}%, ${f.y}% and is ${f.w}% by ${f.h}%, which crosses the card edge.`,
@@ -180,6 +198,25 @@ export function runChecks(d) {
   });
 
   return out;
+}
+
+/** WCAG relative-luminance ratio between two hex colours, or null if unparseable. */
+function contrast(a, b) {
+  const lum = (hex) => {
+    const s = String(hex).replace('#', '');
+    const full = s.length === 3 ? s.split('').map((c) => c + c).join('') : s;
+    if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+    const n = parseInt(full, 16);
+    const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const l1 = lum(a);
+  const l2 = lum(b);
+  if (l1 === null || l2 === null) return null;
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
 export const countBlockers = (findings) => findings.filter((f) => f.level === BLOCKER).length;
