@@ -9,6 +9,7 @@ import { buildBrief, buildJson, buildPrompt, buildBundle, download, textBlob } f
 import { slug } from './model.js';
 import { SAMPLE } from './sample.js';
 import { SAMPLE_ANTE } from './sample-ante.js';
+import { goTo } from './navigate.js';
 import { $, showToast, confirmAction } from './utils.js';
 
 /* ── Check ────────────────────────────────────────────────── */
@@ -41,8 +42,8 @@ export function renderCheck() {
   if (!findings.length) return;
 
   const groups = [
-    { level: BLOCKER, title: 'Blocking', hint: 'An engine cannot be generated past these without inventing rules.' },
-    { level: 'check', title: 'Worth confirming', hint: 'Legal designs, but each one is a choice somebody should make on purpose.' },
+    { level: BLOCKER, title: 'Blocking', hint: 'An engine cannot be generated past these without inventing rules. Click one to go to it.' },
+    { level: 'check', title: 'Worth confirming', hint: 'Legal designs, but each one is a choice somebody should make on purpose. Click one to go to it.' },
   ];
 
   groups.forEach((g) => {
@@ -50,9 +51,15 @@ export function renderCheck() {
     if (!items.length) return;
     const p = panel(`${g.title} (${items.length})`, { hint: g.hint });
     items.forEach((f) => {
-      const card = el('article', `finding finding--${f.level}`);
+      const card = el(f.target ? 'button' : 'article', `finding finding--${f.level}`);
+      if (f.target) {
+        card.type = 'button';
+        card.classList.add('finding--go');
+        card.addEventListener('click', () => goTo(f.target));
+      }
       const top = el('div', 'finding-top');
       top.append(el('span', 'finding-where', f.where), el('h3', 'finding-title', f.title));
+      if (f.target) top.appendChild(el('span', 'finding-go', 'Take me there'));
       card.append(top, el('p', 'finding-detail', f.detail));
       card.appendChild(el('p', 'finding-q', f.question));
       p.body.appendChild(card);
@@ -204,4 +211,9 @@ export function refreshFindings() {
   badge.textContent = String(n);
   badge.hidden = n === 0;
   badge.classList.toggle('tab-count--blocked', blockers > 0);
+
+  // The recompute is debounced, so a pane rendered before it finished is
+  // showing the previous answer. Only the Check pane reads findings directly,
+  // and redrawing it holds no focus, so it is safe to redraw in place.
+  if (state.view === 'check') renderCheck();
 }

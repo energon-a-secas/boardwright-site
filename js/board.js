@@ -125,7 +125,18 @@ function renderZoneList() {
   list.textContent = '';
   $('zoneCount').textContent = String(zones().length);
   if (!zones().length) {
-    const empty = el('li', 'rail-empty', 'No zones yet. Pick a kind above to place the first one.');
+    const empty = el('li', 'rail-empty');
+    empty.appendChild(el('p', '', 'No zones yet. Every component needs somewhere to sit.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Add a deck and a hand');
+    go.type = 'button';
+    go.addEventListener('click', () => {
+      commit((d) => {
+        d.board.zones.push(newZone({ kind: 'deck', x: 60, y: 60 }));
+        d.board.zones.push(newZone({ kind: 'hand', x: 60, y: 360, name: 'Player Hand' }));
+      });
+      emit();
+    });
+    empty.appendChild(go);
     list.appendChild(empty);
     return;
   }
@@ -192,6 +203,26 @@ function renderInspector() {
     { key: 'notes', label: 'Notes for the build', type: 'textarea', rows: 3, placeholder: 'Anything the engine must know that the fields above do not say' },
   ], z, change));
 
+  box.appendChild(el('span', 'form-group-label', 'Align on the board'));
+  const align = el('div', 'align-grid');
+  ([
+    ['left', 'Left', 'M4 3v18M8 7h10v4H8zM8 14h6v4H8z'],
+    ['centre-h', 'Centre across', 'M12 3v18M6 7h12v4H6zM8 14h8v4H8z'],
+    ['right', 'Right', 'M20 3v18M6 7h10v4H6zM10 14h6v4h-6z'],
+    ['top', 'Top', 'M3 4h18M7 8h4v10H7zM14 8h4v6h-4z'],
+    ['centre-v', 'Centre down', 'M3 12h18M7 6h4v12H7zM14 8h4v8h-4z'],
+    ['bottom', 'Bottom', 'M3 20h18M7 6h4v10H7zM14 10h4v6h-4z'],
+  ]).forEach(([how, label, d]) => {
+    const b = el('button', 'align-btn');
+    b.type = 'button';
+    b.title = label;
+    b.setAttribute('aria-label', `Align ${label.toLowerCase()}`);
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+    b.addEventListener('click', () => alignZone(z.id, how));
+    align.appendChild(b);
+  });
+  box.appendChild(align);
+
   const row = el('div', 'inspector-actions');
   row.append(
     actionBtn('Duplicate', () => duplicate(z.id)),
@@ -199,6 +230,25 @@ function renderInspector() {
     actionBtn('Delete', () => removeZone(z.id), 'btn--danger'),
   );
   box.appendChild(row);
+}
+
+const MARGIN = 40;
+
+function alignZone(id, how) {
+  commit((d) => {
+    const z = d.board.zones.find((v) => v.id === id);
+    if (!z) return;
+    const b = d.board;
+    if (how === 'left') z.x = MARGIN;
+    if (how === 'right') z.x = b.width - z.w - MARGIN;
+    if (how === 'centre-h') z.x = Math.round((b.width - z.w) / 2);
+    if (how === 'top') z.y = MARGIN;
+    if (how === 'bottom') z.y = b.height - z.h - MARGIN;
+    if (how === 'centre-v') z.y = Math.round((b.height - z.h) / 2);
+    z.x = clamp(z.x, 0, Math.max(b.width - z.w, 0));
+    z.y = clamp(z.y, 0, Math.max(b.height - z.h, 0));
+  });
+  emit();
 }
 
 function acceptOptions() {
@@ -232,15 +282,32 @@ export function select(id) {
 }
 
 function addZone(kind) {
-  const existing = zones().length;
-  const z = newZone({
-    kind,
-    x: clamp(60 + (existing % 5) * 60, 0, board().width - 360),
-    y: clamp(60 + (existing % 5) * 50, 0, board().height - 220),
-  });
+  const spot = freeSpot(360, 220);
+  const z = newZone({ kind, x: spot.x, y: spot.y });
   commit((d) => d.board.zones.push(z));
   state.selectedZone = z.id;
   emit();
+}
+
+/**
+ * First position on the grid where a new rect does not overlap an existing
+ * one. The old fixed cascade dropped the sixth zone straight onto the first,
+ * so every new zone began with a drag to somewhere it could be seen.
+ */
+function freeSpot(w, h) {
+  const b = board();
+  const step = SNAP_STEP * 3;
+  const fits = (x, y) => !zones().some((z) =>
+    x < z.x + z.w && x + w > z.x && y < z.y + z.h && y + h > z.y);
+
+  for (let y = 40; y + h <= b.height; y += step) {
+    for (let x = 40; x + w <= b.width; x += step) {
+      if (fits(x, y)) return { x, y };
+    }
+  }
+  // A full board still has to accept the zone; overlapping is then the honest
+  // outcome and the designer moves it.
+  return { x: clamp(40, 0, Math.max(b.width - w, 0)), y: clamp(40, 0, Math.max(b.height - h, 0)) };
 }
 
 function duplicate(id) {

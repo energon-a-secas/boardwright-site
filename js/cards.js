@@ -41,7 +41,13 @@ function renderTemplateList() {
   $('tplCount').textContent = String(tpls.length);
 
   if (!tpls.length) {
-    list.appendChild(el('li', 'rail-empty', 'No card templates yet. Games without cards can skip this whole tab.'));
+    const empty = el('li', 'rail-empty');
+    empty.appendChild(el('p', '', 'No card templates yet. A game without cards can skip this tab entirely.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Start a card');
+    go.type = 'button';
+    go.addEventListener('click', addTemplate);
+    empty.appendChild(go);
+    list.appendChild(empty);
     return;
   }
   tpls.forEach((t) => {

@@ -5,7 +5,9 @@ import { render, setView, VIEWS } from './render.js';
 import { handleBoardKey, setBoardSize } from './board.js';
 import { handleCardKey, addTemplate } from './cards.js';
 import { refreshFindings } from './report.js';
-import { handleModalKey, handleModalClick, openModalEl } from './modal.js';
+import { handleModalKey, handleModalClick, openModalEl, openModal } from './modal.js';
+import { SHORTCUTS, localiseCombo } from './shortcuts.js';
+import { el } from './forms.js';
 import { $, showToast, debounce, confirmAction } from './utils.js';
 
 export function bindEvents() {
@@ -22,6 +24,7 @@ export function bindEvents() {
   });
 
   $('exportBtn').addEventListener('click', () => setView('export'));
+  $('keysBtn').addEventListener('click', showKeys);
   $('importBtn').addEventListener('click', () => $('importFile').click());
   $('importFile').addEventListener('change', onImport);
 
@@ -71,6 +74,13 @@ function onKeydown(e) {
   }
   if (typing) return;
 
+  // `?` is shift+/ on most layouts, so match the produced character.
+  if (e.key === '?') {
+    e.preventDefault();
+    showKeys();
+    return;
+  }
+
   // Digits jump between views the way a tab bar would.
   const idx = Number(e.key) - 1;
   if (!e.metaKey && !e.ctrlKey && idx >= 0 && idx < VIEWS.length) {
@@ -81,6 +91,30 @@ function onKeydown(e) {
 
   if (state.view === 'board' && handleBoardKey(e)) e.preventDefault();
   else if (state.view === 'cards' && handleCardKey(e)) e.preventDefault();
+}
+
+/** Built from the declared table, so it cannot drift from the bindings. */
+function showKeys() {
+  const body = $('keysBody');
+  body.textContent = '';
+  SHORTCUTS.forEach((group) => {
+    const sec = el('section', 'keys-group');
+    sec.appendChild(el('h3', 'keys-group-title', group.group));
+    const list = el('dl', 'keys-list');
+    group.keys.forEach((k) => {
+      const dt = el('dt', 'keys-combo');
+      localiseCombo(k.combo).forEach((key, i) => {
+        // `any` means these are alternatives; a `+` between them would claim
+        // you hold all four arrows down at once.
+        if (i && !k.any) dt.appendChild(el('span', 'keys-plus', '+'));
+        dt.appendChild(el('kbd', '', key));
+      });
+      list.append(dt, el('dd', 'keys-label', k.label));
+    });
+    sec.appendChild(list);
+    body.appendChild(sec);
+  });
+  openModal('keysModal');
 }
 
 function doUndo() {

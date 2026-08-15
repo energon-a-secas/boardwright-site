@@ -1433,7 +1433,7 @@ select.form-input { cursor: pointer; }
   color: var(--text-muted);
 }
 .finding--blocker .finding-where { background: rgba(225, 29, 72, 0.18); color: var(--danger-soft); }
-.finding-title { font-size: var(--text-base); font-weight: 600; }
+.finding-title { font-size: var(--text-base); font-weight: 600; color: var(--text-primary); }
 .finding-detail { font-size: var(--text-sm); line-height: 1.6; color: var(--text-secondary); max-width: 74ch; }
 /* The question is the payload of a finding, so it gets its own inset surface
    rather than an accent rule down its left edge. */
@@ -1445,6 +1445,117 @@ select.form-input { cursor: pointer; }
   font-style: italic;
   color: var(--text-primary);
 }
+
+/* A finding is the control that takes you to the thing it is about, so it
+   needs the affordances of one: pointer, hover, focus ring. */
+.finding--go {
+  width: 100%;
+  /* A button used as a card inherits neither the page's text colour nor its
+     font: the UA hands it canvas text, which is near-black on this background.
+     The gotcha is called out at the top of this file; setting both here is the
+     fix it prescribes. */
+  color: var(--text-primary);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.finding--go:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.finding-go {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--accent-bright);
+  opacity: 0;
+  transition: opacity var(--dur);
+}
+.finding--go:hover .finding-go,
+.finding--go:focus-visible .finding-go { opacity: 1; }
+
+/* Landing marker after a jump. Outline rather than a colour change, so it
+   does not read as a state the element is now in. */
+@keyframes flashRing {
+  from { box-shadow: 0 0 0 2px var(--accent-bright), 0 0 0 7px color-mix(in oklab, var(--accent) 34%, transparent); }
+  to   { box-shadow: 0 0 0 2px transparent, 0 0 0 7px transparent; }
+}
+.is-flash {
+  animation: flashRing 1.5s var(--ease-out) both;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Align controls ────────────────────────────────────────── */
+.align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.align-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--dur), color var(--dur), border-color var(--dur);
+}
+.align-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.align-btn svg { width: 17px; height: 17px; }
+
+/* ── Keyboard sheet ────────────────────────────────────────── */
+.keys-group + .keys-group {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+.keys-group-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.keys-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+.keys-combo { display: flex; align-items: center; gap: 3px; }
+.keys-plus { font-size: 10px; color: var(--text-muted); }
+.keys-list kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-primary);
+}
+.keys-label { font-size: var(--text-sm); color: var(--text-secondary); }
+
+/* Empty states carry the action, not just the diagnosis. */
+.rail-empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.rail-empty p { font-size: var(--text-xs); line-height: 1.5; color: var(--text-muted); }
+.panel-empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.panel-empty p { margin: 0; flex: 1 1 260px; }
 
 /* ── Export ────────────────────────────────────────────────── */
 .manifest { list-style: none; display: flex; flex-direction: column; gap: 2px; }

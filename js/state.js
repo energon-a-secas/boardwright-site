@@ -44,6 +44,17 @@ export function emit() {
 }
 
 /**
+ * Tell the quiet channel the design changed. Every path that replaces or
+ * rewinds the design must call this, not just commit(): the readiness check
+ * subscribes here, and skipping it left the Check tab showing the *previous*
+ * design's findings after a load, an import or an undo, until the next edit
+ * happened to refresh them.
+ */
+function notifyQuiet() {
+  quietListeners.forEach((l) => l(state));
+}
+
+/**
  * Apply a mutation to the design.
  * @param {(d: object) => void} fn      mutates the design in place
  * @param {{history?: boolean, silent?: boolean}} [opts]
@@ -55,7 +66,7 @@ export function commit(fn, opts = {}) {
   fn(state.design);
   state.dirty = true;
   save();
-  quietListeners.forEach((l) => l(state));
+  notifyQuiet();
   if (!opts.silent) emit();
 }
 
@@ -74,6 +85,7 @@ export function undo() {
   }
   reconcileSelection();
   save();
+  notifyQuiet();
   emit();
   return true;
 }
@@ -105,6 +117,7 @@ export function replaceDesign(raw) {
   state.selectedVariant = null;
   state.selectedTemplate = state.design.templates[0]?.id || null;
   save();
+  notifyQuiet();
   emit();
 }
 

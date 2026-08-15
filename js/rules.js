@@ -18,6 +18,7 @@ export function renderRules() {
 
 function overviewPanel() {
   const p = panel('Overview', { hint: 'The header of every export. Players and playtime shape the engine as much as the rules do.' });
+  p.dataset.panel = 'overview';
   const meta = state.design.meta;
   p.body.appendChild(buildForm([
     { key: 'name', label: 'Game name', type: 'text', maxlength: 60 },
@@ -46,9 +47,16 @@ function componentsPanel() {
     onAction: () => { commit((d) => d.components.push(newComponent())); emit(); },
     hint: 'What is physically in the box. Counts matter: an engine has to know when the supply runs out.',
   });
+  p.dataset.panel = 'components';
 
   if (!state.design.components.length) {
-    p.body.appendChild(el('p', 'panel-empty', 'Nothing in the box yet.'));
+    const empty = el('div', 'panel-empty');
+    empty.appendChild(el('p', '', 'Nothing in the box yet.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Add the first component');
+    go.type = 'button';
+    go.addEventListener('click', () => { commit((d) => d.components.push(newComponent())); emit(); });
+    empty.appendChild(go);
+    p.body.appendChild(empty);
     return p;
   }
 
@@ -66,6 +74,7 @@ function componentsPanel() {
       { key: 'count', label: 'Count', type: 'number', min: 1, max: 999 },
       { key: 'perPlayer', label: 'Per player', type: 'checkbox' },
     ], c, edit('components', c.id)), row.firstChild);
+    row.dataset.entryId = c.id;
     p.body.appendChild(row);
   });
   return p;
@@ -79,9 +88,16 @@ function phasesPanel() {
     onAction: () => { commit((d) => d.phases.push(newPhase({ name: `Phase ${d.phases.length + 1}` }))); emit(); },
     hint: 'Phases run top to bottom, once per turn. Actions below hang off them.',
   });
+  p.dataset.panel = 'phases';
 
   if (!state.design.phases.length) {
-    p.body.appendChild(el('p', 'panel-empty', 'No phases yet. Most games need at least one.'));
+    const empty = el('div', 'panel-empty');
+    empty.appendChild(el('p', '', 'No phases yet. Most games need at least one.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Add a first phase');
+    go.type = 'button';
+    go.addEventListener('click', () => { commit((d) => d.phases.push(newPhase({ name: 'Phase 1' }))); emit(); });
+    empty.appendChild(go);
+    p.body.appendChild(empty);
     return p;
   }
 
@@ -104,6 +120,7 @@ function phasesPanel() {
       { key: 'name', label: 'Phase', type: 'text', maxlength: 40 },
       { key: 'notes', label: 'What happens', type: 'text', placeholder: 'Refill the market to five cards' },
     ], ph, edit('phases', ph.id)), row.lastChild);
+    row.dataset.entryId = ph.id;
     p.body.appendChild(row);
   });
   return p;
@@ -136,9 +153,16 @@ function actionsPanel() {
     onAction: () => { commit((d) => d.actions.push(newAction())); emit(); },
     hint: 'One row per legal move. From and To are the zones a component travels between, which is what the engine actually executes.',
   });
+  p.dataset.panel = 'actions';
 
   if (!state.design.actions.length) {
-    p.body.appendChild(el('p', 'panel-empty', 'No actions yet. Without them the export describes a board nobody can touch.'));
+    const empty = el('div', 'panel-empty');
+    empty.appendChild(el('p', '', 'No actions yet. Without them the export describes a board nobody can touch.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Add a first action');
+    go.type = 'button';
+    go.addEventListener('click', () => { commit((d) => d.actions.push(newAction())); emit(); });
+    empty.appendChild(go);
+    p.body.appendChild(empty);
     return p;
   }
 
@@ -160,6 +184,7 @@ function actionsPanel() {
       { key: 'requires', label: 'Requires', type: 'text', placeholder: 'Coins at least the card cost' },
       { key: 'effect', label: 'Effect', type: 'text', placeholder: 'Pay the cost, then refill the market' },
     ], a, edit('actions', a.id)), row.firstChild);
+    row.dataset.entryId = a.id;
     p.body.appendChild(row);
   });
   return p;
@@ -173,9 +198,16 @@ function winPanel() {
     onAction: () => { commit((d) => d.win.push(newWin())); emit(); },
     hint: 'The trigger is the check the engine runs. Say when it is evaluated, not only what wins.',
   });
+  p.dataset.panel = 'win';
 
   if (!state.design.win.length) {
-    p.body.appendChild(el('p', 'panel-empty', 'No end condition yet. A game that cannot end cannot be built.'));
+    const empty = el('div', 'panel-empty');
+    empty.appendChild(el('p', '', 'No end condition yet. A game that cannot end cannot be built.'));
+    const go = el('button', 'btn btn--secondary btn--sm', 'Add an end condition');
+    go.type = 'button';
+    go.addEventListener('click', () => { commit((d) => d.win.push(newWin())); emit(); });
+    empty.appendChild(go);
+    p.body.appendChild(empty);
     return p;
   }
 
@@ -191,6 +223,7 @@ function winPanel() {
       { key: 'trigger', label: 'Checked when', type: 'text', placeholder: 'The deck runs out at the end of a round' },
       { key: 'notes', label: 'Tiebreak and detail', type: 'text', placeholder: 'Fewest cards played wins ties' },
     ], w, edit('win', w.id)), row.firstChild);
+    row.dataset.entryId = w.id;
     p.body.appendChild(row);
   });
   return p;
