@@ -34,6 +34,7 @@ flowchart TB
         board & cards --> drag["drag.js<br/>Rect drag/resize"]
         board & cards & rules --> forms["forms.js<br/>Declarative editors"]
         board & cards & rules --> model["model.js<br/>The design shape"]
+        cards --> icons["icons.js<br/>32 original glyphs"]
     end
 
     state <-->|"boardwright.design.v1"| Storage[("localStorage")]
@@ -44,7 +45,8 @@ flowchart TB
         exp["export.js"] --> json["game.json<br/>the model"]
         exp --> brief["BRIEF.md<br/>prose + open questions"]
         exp --> prompt["PROMPT.txt"]
-        image["image.js<br/>canvas renderers"] --> pngs["board.png<br/>cards/*.png<br/>labelled with zone ids"]
+        image["image.js<br/>canvas renderers"] --> pngs["board.png<br/>cards/*-design.png<br/>cards/*-&lt;deck&gt;.png<br/>one print face per colour"]
+        icons -.->|"same path data"| image
         json & brief & prompt & pngs --> zip["zip.js<br/>store-only archive"]
     end
 

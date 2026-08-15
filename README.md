@@ -31,8 +31,8 @@ Draft board and card layouts, export a build-ready spec
 ## Overview
 
 Boardwright turns a board game you are still designing into something a coding
-agent can build. Lay out the board as named zones, lay out each card format as
-slots on a face, then declare the parts a picture cannot show: who owns a zone,
+agent can build. Lay out the board as named zones, paint each card format as a
+coloured face with slots on it, then declare the parts a picture cannot show: who owns a zone,
 who can see into it, what order the phases run in, which moves are legal, and how
 the game ends. The export is a single archive holding reference renders, a JSON
 model, and a written brief that ties them together.
@@ -59,15 +59,28 @@ game asks instead of quietly inventing a rule.
 - **Card template editor** -- slots positioned as percentages of the face, so the
   spec survives any print size or screen the implementer picks; six poker-to-tarot
   size presets, or set the millimetres directly
+- **Cards that look like cards** -- a face colour, an ink, an accent, an oval or
+  corner-wedge frame, and a keyline; slots carry their own plate (box, pill, circle,
+  or a corner wedge that takes its curve from where it sits) and can invert onto it,
+  so an Uno-style badge is an ordinary slot rather than a special case
+- **One template, many decks** -- colour variants share every slot, so a layout
+  change reaches all of them at once. A `pip` slot asks the deck for its glyph and
+  an `icon` slot keeps its own, which is how four element decks differ by mark
+  without becoming four templates that drift apart
+- **32 built-in glyphs** -- elements, combat, magic, items, classes and markers,
+  drawn for this tool. Nothing licensed is baked into your export
 - **A rules model, not rules notes** -- components with counts, ordered turn
   phases, actions declared as a move from one zone to another with a cost and an
   effect, and end conditions with the trigger that gets evaluated
-- **Readiness check** -- fourteen structural questions run continuously and
-  separate what blocks a build from what is merely worth confirming
+- **Readiness check** -- sixteen structural questions run continuously and
+  separate what blocks a build from what is merely worth confirming, including a
+  deck whose ink lands under 3:1 on its own face, which is a defect that survives
+  the screen and dies at the printer
 - **Reference renders** -- board and card PNGs where every rectangle is labelled
   with the same id the JSON uses, so a reader can match the picture to the model
-- **One-click bundle** -- `game.json`, `board.png`, `cards/*.png`, `BRIEF.md` and
-  `PROMPT.txt` in a single archive, built in the browser
+- **One-click bundle** -- `game.json`, `board.png`, a design sheet and a clean
+  print face per deck, `BRIEF.md` and `PROMPT.txt` in a single archive, built in
+  the browser with no dependencies
 - **Local and portable** -- designs live in localStorage, and the JSON export is
   also the import format, so a design moves between machines as one file
 - **Keyboard driven** -- digits switch views, arrows nudge the selection, Cmd/Ctrl+D
@@ -81,7 +94,8 @@ game asks instead of quietly inventing a rule.
 |---|---|
 | `game.json` | The model, versioned. Zones, components, templates, phases, actions, end conditions. |
 | `board.png` | Board reference at full board units, every zone labelled with its id. |
-| `cards/<name>.png` | Face reference per template. Dashed rectangles are slots, labelled with their key. |
+| `cards/<name>-design.png` | Design sheet per template. Dashed rectangles are slots, labelled with their key. |
+| `cards/<name>-<deck>.png` | Print face per deck colour, no annotations. |
 | `BRIEF.md` | The same model in prose: a suggested state shape, tables per section, and the open questions the design left. |
 | `PROMPT.txt` | The message to send along with the bundle. |
 
@@ -111,6 +125,7 @@ boardwright-site/
 └── js/
     ├── app.js            # Entry point, first-run sample
     ├── model.js          # The design shape: zone kinds, field types, factories, migrate
+    ├── icons.js          # 32 original glyphs, one source for SVG and canvas
     ├── state.js          # One design in memory, localStorage, undo, change channels
     ├── board.js          # Board view: zone stage, rail, inspector
     ├── cards.js          # Cards view: template list, card face, slot inspector
@@ -122,7 +137,8 @@ boardwright-site/
     ├── zip.js            # Store-only ZIP writer, no dependencies
     ├── drag.js           # Shared rect drag and resize engine
     ├── forms.js          # Declarative form builder used by every editor
-    ├── sample.js         # Harvest Run, the worked example
+    ├── sample.js         # Harvest Run, the plain board-game example
+    ├── sample-ante.js    # Elemental Ante, the coloured card-game example
     ├── render.js         # View router
     ├── events.js         # Wiring
     ├── modal.js          # Focus-trapped dialog
