@@ -1,0 +1,53 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#0063e5"
+    lineColor: "#38bdf8"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#f0f7ff"
+    clusterBorder: "#bfdbfe"
+    edgeLabelBackground: "#e8f0ff"
+    mainBkg: "#0f172a"
+    nodeBorder: "#0063e5"
+    titleColor: "#1e1b4b"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    User([Designer]) --> HTML["index.html<br/>Shell + five view tabs"]
+
+    subgraph App["ES Modules"]
+        HTML --> app["app.js<br/>Entry point"]
+        app --> state["state.js<br/>One design, undo, change channels"]
+        app --> render["render.js<br/>View router"]
+        app --> events["events.js<br/>Keyboard, import, wiring"]
+
+        render --> board["board.js<br/>Zone stage + inspector"]
+        render --> cards["cards.js<br/>Card face + slots"]
+        render --> rules["rules.js<br/>Phases, actions, end conditions"]
+        render --> report["report.js<br/>Check + Export panes"]
+
+        board & cards --> drag["drag.js<br/>Rect drag/resize"]
+        board & cards & rules --> forms["forms.js<br/>Declarative editors"]
+        board & cards & rules --> model["model.js<br/>The design shape"]
+    end
+
+    state <-->|"boardwright.design.v1"| Storage[("localStorage")]
+    state -->|"every mutation"| lint["lint.js<br/>14 readiness checks"]
+    lint -->|"open questions"| report
+
+    subgraph Bundle["Export bundle (built in the browser)"]
+        exp["export.js"] --> json["game.json<br/>the model"]
+        exp --> brief["BRIEF.md<br/>prose + open questions"]
+        exp --> prompt["PROMPT.txt"]
+        image["image.js<br/>canvas renderers"] --> pngs["board.png<br/>cards/*.png<br/>labelled with zone ids"]
+        json & brief & prompt & pngs --> zip["zip.js<br/>store-only archive"]
+    end
+
+    report --> exp
+    exp --> image
+    zip -->|"one download"| Agent([Coding agent])
