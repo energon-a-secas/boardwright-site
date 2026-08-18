@@ -1,6 +1,6 @@
-# CLAUDE.md — Boardwright
+# CLAUDE.md: Boardwright
 
-Boardwright — board game design handed to a coding agent. Free-form zones on a scaled stage (owner / visibility / capacity / what it holds), card templates whose slots are percentages of the face, and the half a picture cannot carry: components with counts, ordered phases, actions declared as a move between two zones, end conditions with their trigger. Cards carry a real look: face colour + ink + accent, oval/wedge frame, and per-slot plates (box/pill/circle/corner-wedge, invertible) so an Uno-style corner badge is an ordinary slot. **Colour variants** are the load-bearing idea — one template prints as many decks sharing every slot, and a `pip` slot takes its glyph from the deck while an `icon` slot keeps its own, which is how 4 element decks differ without becoming 4 templates that drift. js/icons.js holds 32 **original** glyphs (one path source feeding both inline SVG and canvas Path2D) — deliberately not an imported set, since CC-BY/per-seat art would put an attribution burden inside every user's export. A readiness linter runs continuously over the model and its findings do **not** block the export — they ride inside it as open questions, which is the whole point: the agent asks instead of inventing a rule (it also flags a deck whose ink is under 3:1 on its own face, a defect that survives the screen and dies at the printer). Exports one in-browser zip (store-only writer in js/zip.js, no dependency): game.json, board.png, a design sheet per template carrying slot keys + a clean print face per deck colour, BRIEF.md, PROMPT.txt. Two samples: `sample-ante.js` (Elemental Ante, the coloured card game, first-run default) and `sample.js` (Harvest Run, plainer). localStorage + JSON import/export, no backend (boardwright.neorgon.com)
+Boardwright: board game design handed to a coding agent. Free-form zones on a scaled stage (owner / visibility / capacity / what it holds), card templates whose slots are percentages of the face, and the half a picture cannot carry: components with counts, ordered phases, actions declared as a move between two zones, end conditions with their trigger. Cards carry a real look: face colour + ink + accent, oval/wedge frame, and per-slot plates (box/pill/circle/corner-wedge, invertible) so an Uno-style corner badge is an ordinary slot. **Colour variants** are the load-bearing idea. One template prints as many decks sharing every slot, and a `pip` slot takes its glyph from the deck while an `icon` slot keeps its own, which is how 4 element decks differ without becoming 4 templates that drift. js/icons.js holds 32 **original** glyphs (one path source feeding both inline SVG and canvas Path2D), deliberately not an imported set, since CC-BY/per-seat art would put an attribution burden inside every user's export. A readiness linter runs continuously over the model and its findings do **not** block the export. They ride inside it as open questions, which is the whole point: the agent asks instead of inventing a rule (it also flags a deck whose ink is under 3:1 on its own face, a defect that survives the screen and dies at the printer). Exports one in-browser zip (store-only writer in js/zip.js, no dependency): game.json, board.png, a design sheet per template carrying slot keys + a clean print face per deck colour, BRIEF.md, PROMPT.txt. Two samples: `sample-ante.js` (Elemental Ante, the coloured card game, first-run default) and `sample.js` (Harvest Run, plainer). localStorage + JSON import/export, no backend (boardwright.neorgon.com)
 
 **Live:** boardwright.neorgon.com · **Port:** 8866
 
@@ -10,7 +10,7 @@ Boardwright — board game design handed to a coding agent. Free-form zones on a
 make serve
 ```
 
-Then open http://localhost:8866. It must be served over HTTP — the app is ES modules, and `file://` blocks them.
+Then open http://localhost:8866. It must be served over HTTP. The app is ES modules, and `file://` blocks them.
 
 ## Architecture
 
@@ -37,9 +37,9 @@ Then open http://localhost:8866. It must be served over HTTP — the app is ES m
 | `js/utils.js` | 65 | `$`, `escHtml`, `showToast`, `debounce`, `confirmAction` |
 | `js/shortcuts.js` | 54 | `SHORTCUTS`, `localiseCombo` |
 | `js/render.js` | 49 | `VIEWS`, `render`, `setView` |
-| `js/app.js` | 24 | — |
+| `js/app.js` | 24 | none |
 
-Vendored from `packages/neorgon-ui/` — never edit in place, run the sync script instead: `js/neorgon-footer.js`, `js/neorgon-header.js`.
+Vendored from `packages/neorgon-ui/`: never edit in place, run the sync script instead: `js/neorgon-footer.js`, `js/neorgon-header.js`.
 
 ## Data
 
@@ -59,14 +59,14 @@ Vendored from `packages/neorgon-ui/` — never edit in place, run the sync scrip
   templates that drift. Splitting a variant into its own template reintroduces the
   drift the design exists to prevent.
 - `js/icons.js` holds 32 **original** glyphs, one path source feeding both inline
-  SVG and canvas `Path2D`. They are deliberately not an imported icon set —
+  SVG and canvas `Path2D`. They are deliberately not an imported icon set,
   CC-BY or per-seat art would put an attribution burden inside every user's export.
 - **The readiness linter's findings must not block export.** They ride inside the
   export as open questions, so the coding agent receiving it asks instead of
   inventing a rule. Making the linter blocking defeats the whole mechanism.
-- The linter also flags a deck whose ink is under 3:1 on its own face — a defect
+- The linter also flags a deck whose ink is under 3:1 on its own face. A defect
   that survives the screen and dies at the printer.
 
 ## Do not touch
 
-- `js/neorgon-*.js` and `css/neorgon-*.css` — vendored kits, regenerated by `packages/neorgon-ui/sync-*.sh`.
+- `js/neorgon-*.js` and `css/neorgon-*.css`: vendored kits, regenerated by `packages/neorgon-ui/sync-*.sh`.
