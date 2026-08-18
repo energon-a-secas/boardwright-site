@@ -29,6 +29,10 @@ export function showToast(msg) {
     node.setAttribute('role', 'status');
     document.body.appendChild(node);
   }
+  // Announced by screen readers. Without these the toast is
+  // invisible to anyone not looking at that corner of the screen.
+  node.setAttribute('role', 'status');
+  node.setAttribute('aria-live', 'polite');
   node.textContent = msg;
   node.classList.add('visible');
   clearTimeout(_toastTimer);
