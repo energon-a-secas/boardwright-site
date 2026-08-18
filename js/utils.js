@@ -1,3 +1,12 @@
+// Generic helpers come from the DOM Kit (js/neorgon-dom.js, vendored from
+// packages/neorgon-ui/dom/). They are re-exported so every existing
+// `import { escHtml } from './utils.js'` keeps working.
+//
+// Do not edit js/neorgon-dom.js. Edit the canonical source and run
+// packages/neorgon-ui/sync-dom.sh.
+import { escHtml, debounce, showToast as kitToast } from './neorgon-dom.js';
+export { escHtml, debounce };
+
 // ── Shared utilities ─────────────────────────────────────────
 
 import { openModal, closeModal } from './modal.js';
@@ -8,45 +17,15 @@ export function $(id) {
   return _els[id] || (_els[id] = document.getElementById(id));
 }
 
-/** Escape HTML special characters. */
-export function escHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 /** Show a temporary toast notification. */
-let _toastTimer = null;
+/** This site's own toast contract, rendered by the kit. */
 export function showToast(msg) {
-  let node = document.getElementById('app-toast');
-  if (!node) {
-    node = document.createElement('div');
-    node.id = 'app-toast';
-    node.className = 'toast';
-    node.setAttribute('role', 'status');
-    document.body.appendChild(node);
-  }
-  // Announced by screen readers. Without these the toast is
-  // invisible to anyone not looking at that corner of the screen.
-  node.setAttribute('role', 'status');
-  node.setAttribute('aria-live', 'polite');
-  node.textContent = msg;
-  node.classList.add('visible');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => node.classList.remove('visible'), 2400);
+  return kitToast(msg, { id: 'app-toast', className: 'toast',
+    visibleClass: 'visible', duration: 2400 });
 }
 
-/** Simple debounce. */
-export function debounce(fn, ms) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-}
+
 
 /**
  * Ask before something destructive. The confirm button is rebuilt each
