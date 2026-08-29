@@ -1,4 +1,4 @@
-# Boardwright — product one-pager
+# Boardwright: product one-pager
 
 **What it is:** Draft board and card layouts, export a build-ready spec
 
